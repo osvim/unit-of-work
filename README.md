@@ -27,5 +27,5 @@ var err error
 unitOfWork := uow.New(ctx)
 defer uow.Flush(unitOfWork, &err) 
 	
-// call repositories
+// call repository methods with unit of work context.
 ```

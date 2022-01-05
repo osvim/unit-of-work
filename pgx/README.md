@@ -1,3 +1,7 @@
+# Unit of work
+
+In order to get the context of the execution, use the [pgx.Querier](querier.go)
+
 ## Example
 
 This application transfers money between accounts.
@@ -43,14 +47,14 @@ func (app *Application) Transfer(ctx context.Context, transaction *Transaction) 
 	from.Balance -= transaction.Sum
 	to.Balance += transaction.Sum
 
-	if err = app.accounts.Save(ctx, from); err != nil {
+	if err = app.accounts.Save(unitOfWork, from); err != nil {
 		return
 	}
-	if err = app.accounts.Save(ctx, to); err != nil {
+	if err = app.accounts.Save(unitOfWork, to); err != nil {
 		return
 	}
 
-	return app.transactions.Save(ctx, transaction)
+	return app.transactions.Save(unitOfWork, transaction)
 }
 
 type Application struct {
