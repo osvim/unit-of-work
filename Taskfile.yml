@@ -1,0 +1,18 @@
+version: '3'
+
+tasks:
+
+    lint:
+        desc: Run linter.
+        deps: [ install-lint ]
+        cmds:
+            - ./tools/golangci-lint run --fix
+
+    install-lint:
+        desc: Install linter.
+        cmds:
+            - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b tools {{.VERSION}}
+        vars:
+            VERSION: v1.43.0
+        status:
+            - test -f tools/golangci-lint

@@ -11,13 +11,13 @@ import (
 
 func TestFlush(t *testing.T) {
 	tests := map[string]struct {
+		rollbackLogger  *rollbackLogger
 		flushed         error
 		err             error
 		commitErr       error
 		rollbackErr     error
 		commitErrWrap   string
 		rollbackErrWrap string
-		rollbackLogger  *rollbackLogger
 	}{
 		"no error": {},
 		"commit error": {
@@ -85,7 +85,6 @@ func TestFlush(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 type nilUnitOfWork struct {
@@ -94,12 +93,12 @@ type nilUnitOfWork struct {
 	rollback error
 }
 
-func (uow *nilUnitOfWork) Commit() error {
-	return uow.commit
+func (w *nilUnitOfWork) Commit() error {
+	return w.commit
 }
 
-func (uow *nilUnitOfWork) Rollback() error {
-	return uow.rollback
+func (w *nilUnitOfWork) Rollback() error {
+	return w.rollback
 }
 
 type rollbackLogger struct {
