@@ -3,7 +3,6 @@ package unit_of_work_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 
 	uow "github.com/osvim/unit-of-work"
@@ -11,44 +10,34 @@ import (
 
 func TestFlush(t *testing.T) {
 	tests := map[string]struct {
-		rollbackLogger  *rollbackLogger
-		flushed         error
-		err             error
-		commitErr       error
-		rollbackErr     error
-		commitErrWrap   string
-		rollbackErrWrap string
+		rollbackErrHandler *rollbackErrorHandler
+		flushed            error
+		err                error
+		commitErr          error
+		rollbackErr        error
 	}{
 		"no error": {},
 		"commit error": {
-			commitErr:     errors.New("failed to commit unit-of-work"),
-			commitErrWrap: "failed to save user",
-			flushed:       errors.New("failed to save user: failed to commit unit-of-work"),
+			commitErr: errors.New("failed to commit unit-of-work"),
+			flushed:   errors.New("failed to commit unit-of-work"),
 		},
 		"rollback no error": {
 			err:     errors.New("failed to save user"),
 			flushed: errors.New("failed to save user"),
 		},
 		"rollback error": {
-			err:             errors.New("failed to save user"),
-			rollbackErr:     errors.New("failed to rollback unit-of-work"),
-			rollbackErrWrap: "failed to save user",
-			rollbackLogger:  &rollbackLogger{},
-			flushed:         errors.New("failed to save user"),
+			err:                errors.New("failed to save user"),
+			rollbackErr:        errors.New("failed to rollback unit-of-work"),
+			rollbackErrHandler: &rollbackErrorHandler{},
+			flushed:            errors.New("failed to save user"),
 		},
 	}
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			var opts []uow.Option
-			if test.commitErrWrap != "" {
-				opts = append(opts, uow.WithCommitErrorWrap(test.commitErrWrap))
-			}
-			if test.rollbackErrWrap != "" {
-				opts = append(opts, uow.WithRollbackErrorWrap(test.rollbackErrWrap))
-			}
-			if test.rollbackLogger != nil {
-				opts = append(opts, uow.WithRollbackErrorLogger(test.rollbackLogger.log))
+			if test.rollbackErrHandler != nil {
+				opts = append(opts, uow.WithRollbackErrorHandler(test.rollbackErrHandler.handle))
 			}
 
 			ctx := &nilUnitOfWork{Context: context.TODO(), commit: test.commitErr, rollback: test.rollbackErr}
@@ -68,19 +57,10 @@ func TestFlush(t *testing.T) {
 				}
 			}
 
-			if test.rollbackLogger != nil && test.rollbackErr != nil {
-				expected := test.rollbackErr
-				if test.rollbackErrWrap != "" {
-					expected = fmt.Errorf("%s: %w", test.rollbackErrWrap, test.rollbackErr)
-				}
-
-				if test.rollbackLogger.err == nil {
-					t.Error("expected to log rollback error")
-				} else {
-					logged := test.rollbackLogger.err.Error()
-					if logged != expected.Error() {
-						t.Errorf("expected to log: '%s', got: '%s'", expected, logged)
-					}
+			if test.rollbackErrHandler != nil && test.rollbackErr != nil {
+				if test.rollbackErr != test.rollbackErrHandler.err {
+					t.Errorf("expected rollback error: '%s', got: '%s'", test.rollbackErr,
+						test.rollbackErrHandler.err)
 				}
 			}
 		})
@@ -101,10 +81,10 @@ func (w *nilUnitOfWork) Rollback() error {
 	return w.rollback
 }
 
-type rollbackLogger struct {
+type rollbackErrorHandler struct {
 	err error
 }
 
-func (l *rollbackLogger) log(err error) {
-	l.err = err
+func (h *rollbackErrorHandler) handle(err error) {
+	h.err = err
 }
